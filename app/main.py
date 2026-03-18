@@ -1,9 +1,13 @@
 from fastapi import FastAPI
-from app.scanner import basic_scan
-from app.database import save_scan
-from app.report import generate_report
+from supabase import create_client
+import os
 
 app = FastAPI()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.get("/")
 def home():
@@ -11,13 +15,20 @@ def home():
 
 @app.post("/scan")
 def scan(target: str):
-    result = basic_scan(target)
-    save_scan(target, result)
-    return result
+    # Fake scan (we upgrade later)
+    result = {
+        "target": target,
+        "status": 200,
+        "issues": [
+            {"type": "XSS", "severity": "medium"},
+            {"type": "Open Port", "port": 80}
+        ]
+    }
 
-@app.post("/report")
-def report(target: str):
-    result = basic_scan(target)
-    report = generate_report(target, result)
-    save_scan(target, report)
-    return {"report": report}
+    # Save to Supabase
+    supabase.table("scans").insert({
+        "target": target,
+        "result": str(result)
+    }).execute()
+
+    return result
